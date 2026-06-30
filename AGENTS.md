@@ -9,6 +9,18 @@ Kelowna International (YLW) — airport/resources/airlines/routes live in
 `src/seed.js`. State persists to `data/db.json` (gitignored, auto-created).
 See `README.md` for product/API details and the env-var table.
 
+## Product priorities
+
+- **Primary: aeronautical billing + the airline Landing Fees Portal.** This is
+  the core of the product — the billing engine (`src/billing.js`, auto-rated
+  charges at off-blocks), `/api/billing/*`, the portal (`/portal.html`,
+  `/api/portal/*`), and tariff/invoicing flows must stay correct and take
+  precedence in any change or trade-off.
+- **Secondary: everything else** — AODB/flights, Vectro Allocate
+  (gate/stand/check-in), turnaround, terminal, airside, safety, etc. These are
+  supporting modules; keep them, but never let them regress or complicate the
+  billing/landing-fees path.
+
 ## Cursor Cloud specific instructions
 
 - Run/test/build commands live in `package.json` and `README.md`; reuse those.
