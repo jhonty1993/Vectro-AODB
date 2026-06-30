@@ -1,10 +1,13 @@
 # Vectro AODB
 
-Airport Operational Database (AODB) + airline Landing Fees Portal. A single
-zero-dependency Node.js process (`server.js`) serves the ops console (`/`), the
-landing fees portal (`/portal.html`), a REST/SSE API (`/api/*`), and an
-in-process live simulator. State persists to `data/db.json` (gitignored,
-auto-created). See `README.md` for product/API details and the env-var table.
+Airport Operating System: AODB + Vectro Allocate (gate/stand/check-in
+allocation, `src/allocate.js`, `/api/allocate/*`) + airline Landing Fees Portal.
+A single zero-dependency Node.js process (`server.js`) serves the ops console
+(`/`, 21 modules), the landing fees portal (`/portal.html`), a REST/SSE API
+(`/api/*`), and an in-process live simulator. This instance is configured for
+Kelowna International (YLW) — airport/resources/airlines/routes live in
+`src/seed.js`. State persists to `data/db.json` (gitignored, auto-created).
+See `README.md` for product/API details and the env-var table.
 
 ## Cursor Cloud specific instructions
 

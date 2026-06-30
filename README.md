@@ -1,22 +1,23 @@
-# Vectro AODB + Landing Fees Portal
+# Vectro — Airport Operating System (Kelowna / YLW)
 
-**Airport Operational Database (AODB)** and **airline landing fees self-service portal** on one platform.
+All-in-one **Airport Operational Database (AODB)**, **resource allocation suite (Vectro Allocate)**, and **airline landing-fees self-service portal** on one platform. This instance is configured for **Kelowna International Airport (YLW / CYLW)** — single terminal, 10 gates, regional/narrow-body carrier mix.
 
 Built by **TechHouseCa Inc.** · vectro.ca
 
 ```
 npm start          # or: node server.js
-→ http://localhost:8080              # AODB operations console
+→ http://localhost:8080              # AODB operations console (21 modules)
 → http://localhost:8080/portal.html  # Landing fees portal (airlines)
 ```
 
-Zero dependencies — runs on stock Node.js (≥18). On first boot Vectro seeds a full operating day (~106 flights) and a live simulator drives movements, charges, and alerts in real time.
+Zero dependencies — runs on stock Node.js (≥18). On first boot Vectro seeds a full operating day (~50 flights across 10 gates at YLW) and a live simulator drives movements, charges, and alerts in real time.
 
 ## What's included
 
 | Surface | URL | Audience |
 |---------|-----|----------|
-| **AODB Console** | `/` | Airport ops — 18 modules (flights, FIDS, billing, etc.) |
+| **AODB Console** | `/` | Airport ops — 21 modules (flights, FIDS, allocation, billing, etc.) |
+| **Vectro Allocate** | `/#/allocate` | Ops planning — gate, stand & check-in allocation + optimiser |
 | **Landing Fees Portal** | `/portal.html` | Airlines — charges, invoices, tariff, fee calculator |
 
 ### AODB (Module 02)
@@ -25,6 +26,17 @@ Zero dependencies — runs on stock Node.js (≥18). On first boot Vectro seeds 
 - AOCC actions: delay, cancel, gate change
 - FIDS boards + public display (`/#/fids-display`)
 - Real-time SSE updates
+
+### Vectro Allocate (Modules 04–07)
+
+Intelligent resource allocation across the three pools an airport plans daily:
+
+- **Allocation Manager** — single pane: utilisation KPIs, live conflict list, one-click **auto-resolve**
+- **Gate Management** — rolling 10h gate Gantt, conflict highlighting, click-to-re-gate
+- **Stand Management** — contact + remote stand allocation, tow-to-remote
+- **Check-in Management** — per-island counter demand forecast vs capacity, overload detection, **auto-balance** counters
+
+The optimiser detects overlapping allocations and resolves them by re-gating to a free contact gate (bridge gates preferred) or towing to a remote stand, respecting widebody constraints.
 
 ### Landing Fees Portal
 
@@ -86,6 +98,18 @@ railway variable set PORTAL_API_KEYS='{"AC":"..."}'
 
 Auth header: `Authorization: Bearer <airline-api-key>`
 
+## API — Vectro Allocate
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| GET | `/api/allocate/overview` | Utilisation KPIs + conflict summary |
+| GET | `/api/allocate/board?kind=gate\|stand` | Allocation timeline lanes + conflicts |
+| GET | `/api/allocate/checkin` | Check-in counter demand plan |
+| POST | `/api/allocate/optimize` | Auto-resolve gate/stand conflicts |
+| POST | `/api/allocate/assign` | Reassign a flight (`{flightId, resource}`) |
+| POST | `/api/allocate/checkin/optimize` | Auto-balance counters to demand |
+| POST | `/api/allocate/checkin/set` | Set open counters (`{row, open}`) |
+
 ## Testing
 
 ```
@@ -97,5 +121,7 @@ npm test    # boots server, exercises AODB + billing + portal APIs
 | File | Purpose |
 |------|---------|
 | `src/seed.js` → `TARIFFS` | Published aeronautical tariff |
-| `src/seed.js` → airport block | Airport identity (default YYZ) |
+| `src/seed.js` → airport block | Airport identity (configured for YLW) |
+| `src/seed.js` → `buildResources` | Gates / stands / belts / check-in / runways |
+| `src/allocate.js` | Vectro Allocate engine (allocation + optimiser) |
 | `data/db.json` | Operating-day snapshot (regenerates if stale) |
