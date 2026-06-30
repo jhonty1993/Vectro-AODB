@@ -52,16 +52,20 @@ async function main() {
 
     const bs = await get('/api/bootstrap');
     check('bootstrap has airport config', bs.config?.airport?.iata?.length === 3);
-    check('18-module platform metadata present', bs.config.platform === 'Vectro');
+    check('configured for Kelowna International (YLW)', bs.config.airport.iata === 'YLW' && bs.config.airport.icao === 'CYLW');
+    check('Vectro platform metadata present', bs.config.platform === 'Vectro');
 
     const flights = await get('/api/flights');
-    check('AODB seeded with a full operating day', flights.length > 80, `got ${flights.length}`);
+    check('AODB seeded with a full operating day', flights.length > 30, `got ${flights.length}`);
     check('flights carry billing-grade data (MTOW)', flights.every(f => f.mtow > 0));
     check('arrivals and departures both present',
       flights.some(f => f.type === 'ARR') && flights.some(f => f.type === 'DEP'));
 
+    const resources = await get('/api/resources');
+    check('10 gates configured for YLW', resources.gates.length === 10);
+
     const turns = await get('/api/turnarounds');
-    check('turnarounds linked to flight pairs', turns.length > 30 && turns.every(t => t.arrId && t.depId));
+    check('turnarounds linked to flight pairs', turns.length > 12 && turns.every(t => t.arrId && t.depId));
     check('each turnaround tracks 22 milestones', turns.every(t => t.milestones.length === 22));
     const backfilled = turns.filter(t => t.status === 'COMPLETED' || t.status === 'IN_PROGRESS');
     check('simulator backfilled the past portion of the day', backfilled.length > 0);
@@ -73,7 +77,8 @@ async function main() {
     for (const ep of ['fids?type=DEP', 'fids?type=ARR', 'allocations', 'resources', 'queues',
       'baggage', 'gse', 'assets', 'workorders', 'incidents', 'inspections', 'notams',
       'staff', 'concessions', 'weather', 'alerts', 'events', 'billing/summary',
-      'billing/charges', 'billing/invoices']) {
+      'billing/charges', 'billing/invoices',
+      'allocate/overview', 'allocate/board?kind=gate', 'allocate/board?kind=stand', 'allocate/checkin']) {
       const data = await get('/api/' + ep);
       check(`GET /api/${ep}`, data != null);
     }
@@ -82,13 +87,31 @@ async function main() {
     const target = flights.find(f => f.type === 'DEP' && f.act == null && f.status !== 'CANCELLED');
     const delayed = await post(`/api/flights/${target.id}/action`, { action: 'delay', minutes: 30, reason: 'Test' });
     check('AOCC delay action shifts ETD', delayed.est - target.est >= 30 * 60000 - 1000);
-    const moved = await post(`/api/flights/${target.id}/action`, { action: 'gate', gate: 'A1' });
-    check('gate change reflected in AODB', moved.gate === 'A1' && moved.stand === 'S-A1');
+    const moved = await post(`/api/flights/${target.id}/action`, { action: 'gate', gate: '3' });
+    check('gate change reflected in AODB', moved.gate === '3' && moved.stand === 'S-3');
+
+    // Vectro Allocate
+    const allocOv = await get('/api/allocate/overview');
+    check('allocate overview reports gate pool', allocOv.contactGates === 10);
+    const gateBoard = await get('/api/allocate/board?kind=gate');
+    check('allocate gate board has lanes + allocations', gateBoard.lanes.length === 10 && Array.isArray(gateBoard.allocations));
+    const standBoard = await get('/api/allocate/board?kind=stand');
+    check('allocate stand board includes remote stands', standBoard.lanes.some(l => l.remote));
+    const optimized = await post('/api/allocate/optimize', {});
+    check('allocate optimiser runs and does not increase conflicts',
+      Array.isArray(optimized.moves) && optimized.remaining <= allocOv.conflicts);
+    const assignTarget = flights.find(f => f.type === 'DEP' && f.act == null && f.status !== 'CANCELLED' && f.id !== target.id);
+    if (assignTarget) {
+      const assigned = await post('/api/allocate/assign', { flightId: assignTarget.id, resource: '7' });
+      check('allocate manual reassignment moves flight', assigned.flight.gate === '7' && assigned.flight.stand === 'S-7');
+    }
+    const ci = await post('/api/allocate/checkin/optimize', {});
+    check('check-in auto-balance returns a plan', ci.plan && Array.isArray(ci.plan.rows));
 
     // Airfield
-    const rwy = await post('/api/runways/' + encodeURIComponent('06R/24L'), { status: 'CLOSED', note: 'test' });
+    const rwy = await post('/api/runways/' + encodeURIComponent('16/34'), { status: 'CLOSED', note: 'test' });
     check('runway closure', rwy.status === 'CLOSED');
-    await post('/api/runways/' + encodeURIComponent('06R/24L'), { status: 'OPEN', note: '' });
+    await post('/api/runways/' + encodeURIComponent('16/34'), { status: 'OPEN', note: '' });
     const alerts = await get('/api/alerts');
     check('runway closure raised a HIGH alert', alerts.some(a => a.sev === 'HIGH' && a.module === 'Airfield'));
 

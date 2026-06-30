@@ -30,7 +30,7 @@ export function stream(onStateChange) {
       setTimeout(connect, retryMs);
       retryMs = Math.min(retryMs * 2, 30000);
     };
-    for (const type of ['tick', 'alert', 'event', 'flight', 'reseed', 'hello']) {
+    for (const type of ['tick', 'alert', 'event', 'flight', 'reseed', 'hello', 'alloc']) {
       es.addEventListener(type, e => {
         const set = listeners.get(type);
         if (!set) return;
