@@ -240,7 +240,7 @@ function tickSupport(db, emit, now) {
   // Weather refresh every ~30 min
   if (now - db.weather.ts > 30 * MIN) {
     const prevTemp = db.weather.temp;
-    db.weather = makeWeather(now);
+    db.weather = makeWeather(now, db.config.airport.icao);
     db.weather.temp = clamp(prevTemp + randInt(-2, 2), -15, 32);
     logEvent(db, emit, 'Weather', `METAR updated: ${db.weather.metar}`, { sev: 'info' });
     if (db.weather.windSpd >= 20) raiseAlert(db, emit, `wx:wind:${Math.floor(now / HOUR)}`, 'MED', 'Weather', `Strong winds ${db.weather.windSpd}${db.weather.gust ? 'G' + db.weather.gust : ''} kt — single-runway ops possible`);

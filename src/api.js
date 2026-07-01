@@ -5,6 +5,7 @@ const { id, MIN, HOUR } = require('./util');
 const { logEvent, raiseAlert } = require('./simulator');
 const { authenticatePortal } = require('./auth');
 const { estimateMovement, portalSummary, chargeForAirline, invoicesForAirline } = require('./billing');
+const allocate = require('./allocate');
 
 // ---------------------------------------------------------------------------
 // SSE hub
@@ -224,6 +225,33 @@ async function handle(req, res, pathname, query) {
     if (pathname === '/api/resources') return json(res, 200, db.resources);
     if (pathname === '/api/allocations') {
       return json(res, 200, { gates: db.resources.gates.map(g => g.id), allocations: db.allocations, now: Date.now() });
+    }
+
+    // ---- Vectro Allocate (gate / stand / check-in allocation engine) ----
+    if (pathname === '/api/allocate/overview' && m === 'GET') return json(res, 200, allocate.overview(db));
+    if (pathname === '/api/allocate/board' && m === 'GET') {
+      return json(res, 200, allocate.board(db, query.kind === 'stand' ? 'stand' : 'gate'));
+    }
+    if (pathname === '/api/allocate/checkin' && m === 'GET') return json(res, 200, allocate.checkinPlan(db));
+    if (pathname === '/api/allocate/optimize' && m === 'POST') {
+      await readBody(req);
+      return json(res, 200, allocate.optimize(db, emit));
+    }
+    if (pathname === '/api/allocate/assign' && m === 'POST') {
+      const b = await readBody(req);
+      const r = allocate.assign(db, emit, b.flightId, b.resource);
+      if (r.error) return json(res, r.code || 400, { error: r.error });
+      return json(res, 200, r);
+    }
+    if (pathname === '/api/allocate/checkin/optimize' && m === 'POST') {
+      await readBody(req);
+      return json(res, 200, allocate.optimizeCheckin(db, emit));
+    }
+    if (pathname === '/api/allocate/checkin/set' && m === 'POST') {
+      const b = await readBody(req);
+      const r = allocate.setCheckin(db, emit, b.row, b.open);
+      if (r.error) return json(res, r.code || 400, { error: r.error });
+      return json(res, 200, r);
     }
     if (seg[1] === 'runways' && seg[2] && m === 'POST') {
       const rwy = db.resources.runways.find(r => r.id === decodeURIComponent(seg[2]));

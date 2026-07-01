@@ -1,7 +1,7 @@
 {
   "name": "vectro-aodb",
-  "version": "1.1.0",
-  "description": "Vectro AODB — Airport Operational Database with Landing Fees Portal. Flight ops console + airline self-service billing.",
+  "version": "1.2.0",
+  "description": "Vectro — Airport Operating System (YLW): AODB, Vectro Allocate (gate/stand/check-in allocation), and airline Landing Fees Portal.",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {

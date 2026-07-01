@@ -243,6 +243,26 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 }
 .gantt-now { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--bad); z-index: 5; box-shadow: 0 0 8px rgba(255,93,108,.7); }
 .gantt-now::after { content: 'NOW'; position: absolute; top: 2px; left: 4px; font-size: 8.5px; color: var(--bad); font-weight: 800; }
+.gantt-block.conflict { outline: 2px solid var(--bad); outline-offset: -1px; box-shadow: 0 0 10px rgba(255,93,108,.65); z-index: 3; }
+.gantt-block.remote { border-style: dashed; opacity: .92; }
+.gantt-block[onclick], .gantt-block.conflict { cursor: pointer; }
+.gantt-row.remote-row { background: rgba(179,136,255,.05); border-top: 1px dashed var(--border2); }
+.gantt-row .lbl .lane-tag { display: block; font-size: 8px; color: var(--faint); letter-spacing: .4px; text-transform: uppercase; }
+
+/* Allocate nav cards */
+.alloc-card { display: flex; gap: 12px; align-items: center; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel); text-decoration: none; color: var(--text); }
+.alloc-card:hover { border-color: var(--accent); background: var(--panel2); }
+.alloc-card-ico { width: 38px; height: 38px; flex: none; display: flex; align-items: center; justify-content: center; border-radius: 9px; background: rgba(77,163,255,.12); color: var(--accent); font-size: 18px; }
+.alloc-card-t { font-weight: 650; font-size: 13px; }
+.alloc-card-s { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+/* Check-in demand chart */
+.panel.panel-warn { border-color: rgba(255,93,108,.4); }
+.ci-chart { position: relative; height: 56px; }
+.ci-bars { display: flex; align-items: flex-end; gap: 2px; height: 56px; }
+.ci-bars .ci-bar { flex: 1; min-height: 1px; background: var(--accent2); border-radius: 2px 2px 0 0; opacity: .8; }
+.ci-bars .ci-bar.over { background: var(--bad); opacity: 1; }
+.ci-cap { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed var(--warn); z-index: 2; }
 
 /* Turnaround cards */
 .turn-card { border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel); padding: 12px 14px; cursor: pointer; }

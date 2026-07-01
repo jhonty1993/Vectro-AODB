@@ -67,7 +67,7 @@ export async function settingsView(root) {
       el('dt', {}, 'Timezone'), el('dd', {}, config.airport.tz),
       el('dt', {}, 'Currency'), el('dd', {}, config.currency),
       el('dt', {}, 'Operator'), el('dd', {}, config.operator),
-      el('dt', {}, 'Platform'), el('dd', {}, `${config.platform} v1.0 — The Airport Operating System`),
+      el('dt', {}, 'Platform'), el('dd', {}, `${config.platform} v1.2 — The Airport Operating System`),
     )),
     panel('Users & roles', table([
       { h: 'Name', r: u => u.name },

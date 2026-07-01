@@ -6,30 +6,22 @@ const { id, rand, randInt, pick, chance, wpick, clamp, MIN, HOUR } = require('./
 // Reference data
 // ---------------------------------------------------------------------------
 
+// Carrier mix reflects Kelowna International (YLW) — regional/narrow-body domestic,
+// transborder and seasonal sun routes. No scheduled wide-body service.
 const AIRLINES = [
+  { code: 'WS', name: 'WestJet',         color: '#00aada', share: 34 },
   { code: 'AC', name: 'Air Canada',      color: '#e01933', share: 30 },
-  { code: 'WS', name: 'WestJet',         color: '#00aada', share: 14 },
-  { code: 'PD', name: 'Porter Airlines', color: '#7a9bb3', share: 8 },
+  { code: 'F8', name: 'Flair Airlines',  color: '#8bc53f', share: 11 },
+  { code: 'PD', name: 'Porter Airlines', color: '#7a9bb3', share: 9 },
+  { code: 'AS', name: 'Alaska Airlines', color: '#01426a', share: 6 },
   { code: 'TS', name: 'Air Transat',     color: '#00b0b9', share: 5 },
-  { code: 'F8', name: 'Flair Airlines',  color: '#8bc53f', share: 4 },
-  { code: 'AA', name: 'American',        color: '#9da6ab', share: 6 },
-  { code: 'UA', name: 'United',          color: '#005daa', share: 6 },
-  { code: 'DL', name: 'Delta',           color: '#c8102e', share: 5 },
-  { code: 'B6', name: 'JetBlue',         color: '#0033a0', share: 2 },
-  { code: 'BA', name: 'British Airways', color: '#075aaa', share: 3 },
-  { code: 'LH', name: 'Lufthansa',       color: '#f9ba00', share: 3 },
-  { code: 'AF', name: 'Air France',      color: '#002157', share: 2 },
-  { code: 'KL', name: 'KLM',             color: '#00a1de', share: 2 },
-  { code: 'LX', name: 'SWISS',           color: '#d52b1e', share: 2 },
-  { code: 'EK', name: 'Emirates',        color: '#d71921', share: 2 },
-  { code: 'QR', name: 'Qatar Airways',   color: '#5c0632', share: 2 },
-  { code: 'TK', name: 'Turkish Airlines',color: '#c90119', share: 2 },
-  { code: 'CX', name: 'Cathay Pacific',  color: '#00645a', share: 1 },
-  { code: 'NH', name: 'ANA',             color: '#10448c', share: 1 },
+  { code: 'WW', name: 'Pacific Coastal',  color: '#0a7abf', share: 5 },
 ];
 
-// MTOW in tonnes drives the billing engine.
+// MTOW in tonnes drives the billing engine. YLW is served by regional and
+// narrow-body equipment; A333/B788 are kept as charter/diversion reference only.
 const AIRCRAFT = {
+  SF34: { name: 'Saab 340B',         mtow: 13.2,  pax: 34,   body: 'N' },
   DH8D: { name: 'Dash 8-400',        mtow: 30.5,  pax: 78,   body: 'N' },
   E75L: { name: 'Embraer E175',      mtow: 38.8,  pax: 76,   body: 'N' },
   BCS3: { name: 'Airbus A220-300',   mtow: 69.9,  pax: 137,  body: 'N' },
@@ -39,54 +31,32 @@ const AIRCRAFT = {
   B738: { name: 'Boeing 737-800',    mtow: 79.0,  pax: 168,  body: 'N' },
   A333: { name: 'Airbus A330-300',   mtow: 242,   pax: 297,  body: 'W' },
   B788: { name: 'Boeing 787-8',      mtow: 228,   pax: 255,  body: 'W' },
-  B789: { name: 'Boeing 787-9',      mtow: 254,   pax: 298,  body: 'W' },
-  B77W: { name: 'Boeing 777-300ER',  mtow: 351.5, pax: 400,  body: 'W' },
-  A359: { name: 'Airbus A350-900',   mtow: 280,   pax: 325,  body: 'W' },
-  B77L: { name: 'Boeing 777-200LR',  mtow: 347.5, pax: 300,  body: 'W' },
 };
 
 const FLEETS = {
-  AC: ['A320', 'A321', 'BCS3', 'B38M', 'B788', 'B789', 'B77W', 'A333', 'E75L', 'DH8D'],
-  WS: ['B738', 'B38M', 'B789', 'DH8D'],
-  PD: ['E75L', 'DH8D'],
-  TS: ['A321', 'A333'],
+  WS: ['B738', 'B38M', 'DH8D', 'BCS3'],
+  AC: ['DH8D', 'E75L', 'A320', 'A321', 'BCS3'],
   F8: ['B38M', 'B738'],
-  AA: ['A321', 'B738', 'E75L'],
-  UA: ['A320', 'B738', 'E75L'],
-  DL: ['A321', 'A320', 'E75L'],
-  B6: ['A320', 'A321'],
-  BA: ['B77W', 'B789'],
-  LH: ['A359', 'A333'],
-  AF: ['B77W', 'A359'],
-  KL: ['B789', 'A333'],
-  LX: ['B77W', 'A333'],
-  EK: ['B77W', 'A359'],
-  QR: ['B77W', 'A359'],
-  TK: ['B77W', 'A359'],
-  CX: ['B77W', 'A359'],
-  NH: ['B789', 'B77W'],
+  PD: ['E75L', 'DH8D'],
+  AS: ['E75L', 'DH8D'],
+  TS: ['A321'],
+  WW: ['SF34', 'DH8D'],
 };
 
+// Destinations served nonstop from Kelowna (YLW).
 const CITIES = {
   domestic: [
-    ['YVR', 'Vancouver'], ['YYC', 'Calgary'], ['YEG', 'Edmonton'], ['YUL', 'Montréal'],
-    ['YOW', 'Ottawa'], ['YHZ', 'Halifax'], ['YWG', 'Winnipeg'], ['YQB', 'Québec City'],
-    ['YXE', 'Saskatoon'], ['YQR', 'Regina'], ['YYJ', 'Victoria'], ['YTS', 'Timmins'],
-    ['YQT', 'Thunder Bay'], ['YSB', 'Sudbury'], ['YKF', 'Waterloo'],
+    ['YVR', 'Vancouver'], ['YYC', 'Calgary'], ['YEG', 'Edmonton'], ['YYZ', 'Toronto'],
+    ['YWG', 'Winnipeg'], ['YYJ', 'Victoria'], ['YXS', 'Prince George'], ['YQQ', 'Comox'],
+    ['YXX', 'Abbotsford'], ['YZF', 'Yellowknife'],
   ],
   transborder: [
-    ['JFK', 'New York–JFK'], ['EWR', 'Newark'], ['LGA', 'New York–LGA'], ['BOS', 'Boston'],
-    ['ORD', 'Chicago'], ['DFW', 'Dallas–Fort Worth'], ['LAX', 'Los Angeles'], ['SFO', 'San Francisco'],
-    ['MIA', 'Miami'], ['MCO', 'Orlando'], ['DEN', 'Denver'], ['ATL', 'Atlanta'],
-    ['SEA', 'Seattle'], ['LAS', 'Las Vegas'], ['IAD', 'Washington–Dulles'], ['PHL', 'Philadelphia'],
-    ['TPA', 'Tampa'], ['FLL', 'Fort Lauderdale'],
+    ['SEA', 'Seattle'], ['LAS', 'Las Vegas'], ['PHX', 'Phoenix–Mesa'], ['SFO', 'San Francisco'],
+    ['LAX', 'Los Angeles'], ['PSP', 'Palm Springs'],
   ],
   international: [
-    ['LHR', 'London–Heathrow'], ['CDG', 'Paris–CDG'], ['FRA', 'Frankfurt'], ['AMS', 'Amsterdam'],
-    ['ZRH', 'Zürich'], ['DXB', 'Dubai'], ['DOH', 'Doha'], ['IST', 'Istanbul'],
-    ['HKG', 'Hong Kong'], ['HND', 'Tokyo–Haneda'], ['MEX', 'Mexico City'], ['CUN', 'Cancún'],
-    ['PUJ', 'Punta Cana'], ['MBJ', 'Montego Bay'], ['KIN', 'Kingston'], ['BGI', 'Barbados'],
-    ['DUB', 'Dublin'], ['FCO', 'Rome'], ['GRU', 'São Paulo'], ['DEL', 'Delhi'],
+    ['PVR', 'Puerto Vallarta'], ['SJD', 'Los Cabos'], ['CUN', 'Cancún'],
+    ['MBJ', 'Montego Bay'], ['ZIH', 'Ixtapa'],
   ],
 };
 
@@ -156,32 +126,32 @@ const MILESTONES = [
 // ---------------------------------------------------------------------------
 
 function buildResources() {
+  // Kelowna International (YLW): single terminal, 10 gates. Lower-numbered gates
+  // have boarding bridges; higher-numbered are walk-out (apron-loaded) stands.
+  // Gates 9 & 10 are widebody-capable for charter / diversion handling.
   const gates = [];
-  for (let i = 1; i <= 12; i++) gates.push({ id: `A${i}`, terminal: 'T1', pier: 'A', bridge: true, wide: i >= 9, status: 'AVAILABLE' });
-  for (let i = 1; i <= 12; i++) gates.push({ id: `B${i}`, terminal: 'T1', pier: 'B', bridge: true, wide: i >= 10, status: 'AVAILABLE' });
-  for (let i = 1; i <= 10; i++) gates.push({ id: `C${i}`, terminal: 'T3', pier: 'C', bridge: true, wide: i >= 8, status: 'AVAILABLE' });
-  const stands = gates.map(g => ({ id: `S-${g.id}`, type: 'CONTACT', gate: g.id, wide: g.wide, status: 'AVAILABLE' }));
-  for (let i = 1; i <= 8; i++) stands.push({ id: `R${i}`, type: 'REMOTE', gate: null, wide: i >= 6, status: 'AVAILABLE' });
-  const belts = [];
-  for (let i = 1; i <= 5; i++) belts.push({ id: `T1-B${i}`, terminal: 'T1', status: 'OK' });
-  for (let i = 1; i <= 3; i++) belts.push({ id: `T3-B${i}`, terminal: 'T3', status: 'OK' });
-  const checkin = [];
-  for (const row of ['T1-Row 1', 'T1-Row 2', 'T1-Row 3', 'T1-Row 4', 'T3-Row 1', 'T3-Row 2']) {
-    checkin.push({ id: row, counters: 12, open: randInt(4, 12), status: 'OPEN' });
+  for (let i = 1; i <= 10; i++) {
+    gates.push({ id: `${i}`, terminal: 'T1', pier: 'Main', bridge: i <= 5, wide: i >= 9, status: 'AVAILABLE' });
   }
+  const stands = gates.map(g => ({ id: `S-${g.id}`, type: 'CONTACT', gate: g.id, wide: g.wide, status: 'AVAILABLE' }));
+  for (let i = 1; i <= 4; i++) stands.push({ id: `R${i}`, type: 'REMOTE', gate: null, wide: i >= 3, status: 'AVAILABLE' });
+  const belts = [];
+  for (let i = 1; i <= 3; i++) belts.push({ id: `B${i}`, terminal: 'T1', status: 'OK' });
+  const checkin = [
+    { id: 'Island A', airline: 'WS', counters: 12, open: randInt(4, 10), status: 'OPEN' },
+    { id: 'Island B', airline: 'AC', counters: 12, open: randInt(4, 10), status: 'OPEN' },
+    { id: 'Island C', airline: 'F8', counters: 8, open: randInt(2, 6), status: 'OPEN' },
+    { id: 'Island D', airline: null, counters: 10, open: randInt(2, 6), status: 'OPEN' },
+  ];
   const runways = [
-    { id: '05/23',   length: 3389, status: 'OPEN', mode: 'DEP' },
-    { id: '06L/24R', length: 2956, status: 'OPEN', mode: 'ARR' },
-    { id: '06R/24L', length: 2743, status: 'OPEN', mode: 'MIXED' },
-    { id: '15L/33R', length: 3368, status: 'OPEN', mode: 'STANDBY' },
-    { id: '15R/33L', length: 2770, status: 'CLOSED', mode: 'MAINT', note: 'Scheduled pavement work until 14:00' },
+    { id: '16/34', length: 2682, status: 'OPEN', mode: 'MIXED', note: 'Primary — asphalt' },
   ];
   return { gates, stands, belts, checkin, runways };
 }
 
 function makeReg(airline) {
   const c = () => String.fromCharCode(65 + randInt(0, 25));
-  if (['AA', 'UA', 'DL', 'B6'].includes(airline)) return `N${randInt(100, 999)}${c()}${c()}`;
+  if (['AS'].includes(airline)) return `N${randInt(100, 999)}${c()}${c()}`;
   return `C-F${c()}${c()}${c()}`;
 }
 
@@ -208,9 +178,10 @@ function buildFlights(db, now) {
   const turnarounds = [];
   const allocations = [];
 
-  // ~46 turnaround pairs + ~14 singles over a 24h window
+  // ~22 turnaround pairs + ~8 singles over a 24h window — sized for YLW's
+  // ~50–60 daily movements across 10 gates (healthy allocation pressure).
   const slots = [];
-  for (let i = 0; i < 46; i++) slots.push(Math.round(dayStart + rand(0, 20 * HOUR)));
+  for (let i = 0; i < 22; i++) slots.push(Math.round(dayStart + rand(0, 20 * HOUR)));
   slots.sort((a, b) => a - b);
 
   for (const arrSched of slots) {
@@ -243,7 +214,7 @@ function buildFlights(db, now) {
       id: id('flt'), fltNo: `${airline.code}${n}`, airline: airline.code, type: 'ARR',
       cityIata: origIata, city: origCity, sector,
       sched: arrSched, est: arrSched + arrDelay * MIN, act: null, onBlocks: null,
-      status: 'SCHEDULED', gate: gate.id, stand, belt, runway: '06L/24R',
+      status: 'SCHEDULED', gate: gate.id, stand, belt, runway: '16/34',
       acType, acName: ac.name, reg, mtow: ac.mtow, body: ac.body,
       pax: paxArr, bags: Math.round(paxArr * rand(0.7, 1.2)), remarks: '',
     };
@@ -251,7 +222,7 @@ function buildFlights(db, now) {
       id: id('flt'), fltNo: `${airline.code}${n + 1}`, airline: airline.code, type: 'DEP',
       cityIata: destIata, city: destCity, sector,
       sched: depSched, est: depSched + depDelay * MIN, act: null, offBlocks: null,
-      status: 'SCHEDULED', gate: gate.id, stand, checkin: pick(db.resources.checkin).id, runway: '05/23',
+      status: 'SCHEDULED', gate: gate.id, stand, checkin: pick(db.resources.checkin).id, runway: '16/34',
       acType, acName: ac.name, reg, mtow: ac.mtow, body: ac.body,
       pax: paxDep, bags: Math.round(paxDep * rand(0.7, 1.2)), remarks: '',
     };
@@ -276,7 +247,7 @@ function buildFlights(db, now) {
   }
 
   // Singles: originating departures & terminating arrivals (aircraft based here / overnighting)
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < 8; i++) {
     const airline = wpick(AIRLINES.map(a => [a, a.share]));
     const acType = pick(FLEETS[airline.code]);
     const ac = AIRCRAFT[acType];
@@ -293,7 +264,7 @@ function buildFlights(db, now) {
       cityIata: iata, city, sector,
       sched, est: sched + delay * MIN, act: null,
       status: 'SCHEDULED', gate: gate.id, stand: `S-${gate.id}`,
-      runway: type === 'DEP' ? '05/23' : '06L/24R',
+      runway: '16/34',
       acType, acName: ac.name, reg: makeReg(airline.code), mtow: ac.mtow, body: ac.body,
       pax, bags: Math.round(pax * rand(0.7, 1.2)), remarks: '', linkId: null,
     };
@@ -325,11 +296,11 @@ function buildFlights(db, now) {
 }
 
 function buildSupportData(db, now) {
-  // --- GSE fleet ---
+  // --- GSE fleet --- (sized for a regional single-terminal apron)
   const gseTypes = [
-    ['TUG', 'Pushback tug', 8], ['BLD', 'Belt loader', 10], ['GPU', 'Ground power unit', 9],
-    ['DEICE', 'De-icing truck', 4], ['FUEL', 'Fuel bowser', 6], ['CAT', 'Catering truck', 5],
-    ['BUS', 'Apron bus', 6], ['STR', 'Pax stairs', 5], ['LAV', 'Lavatory cart', 4], ['WTR', 'Water cart', 4],
+    ['TUG', 'Pushback tug', 5], ['BLD', 'Belt loader', 6], ['GPU', 'Ground power unit', 6],
+    ['DEICE', 'De-icing truck', 3], ['FUEL', 'Fuel bowser', 4], ['CAT', 'Catering truck', 3],
+    ['BUS', 'Apron bus', 3], ['STR', 'Pax stairs', 5], ['LAV', 'Lavatory cart', 3], ['WTR', 'Water cart', 3],
   ];
   db.gse = [];
   let gn = 100;
@@ -339,7 +310,7 @@ function buildSupportData(db, now) {
         id: `${code}-${gn++}`, type: code, name,
         status: wpick([['IN_SERVICE', 6], ['IDLE', 3], ['MAINTENANCE', 1]]),
         battery: randInt(35, 100), hours: randInt(1200, 18000),
-        location: pick(['Apron I', 'Apron II', 'Apron V', 'Pier A', 'Pier B', 'Pier C', 'GSE Depot']),
+        location: pick(['Main apron', 'North apron', 'Walk-out stands', 'De-ice pad', 'GSE compound']),
         operator: chance(0.6) ? personName() : null,
       });
     }
@@ -347,8 +318,8 @@ function buildSupportData(db, now) {
 
   // --- Assets & work orders ---
   const assetDefs = [
-    ['PBB', 'Passenger boarding bridge', 34], ['ESC', 'Escalator', 18], ['ELV', 'Elevator', 14],
-    ['HVAC', 'HVAC unit', 12], ['BHS', 'Baggage line drive', 16], ['DOOR', 'Automatic door', 20],
+    ['PBB', 'Passenger boarding bridge', 5], ['ESC', 'Escalator', 4], ['ELV', 'Elevator', 4],
+    ['HVAC', 'HVAC unit', 6], ['BHS', 'Baggage line drive', 5], ['DOOR', 'Automatic door', 8],
   ];
   db.assets = [];
   let an = 1;
@@ -356,7 +327,7 @@ function buildSupportData(db, now) {
     for (let i = 0; i < count; i++) {
       db.assets.push({
         id: `${code}-${String(an++).padStart(3, '0')}`, type: code, name,
-        location: pick(['T1 Pier A', 'T1 Pier B', 'T3 Pier C', 'T1 Departures', 'T3 Arrivals', 'T1 Baggage hall']),
+        location: pick(['Gate area', 'Departures hall', 'Arrivals hall', 'Baggage hall', 'Airside corridor']),
         health: randInt(62, 100),
         status: wpick([['OK', 12], ['DEGRADED', 2], ['DOWN', 1]]),
         lastService: now - randInt(2, 120) * 24 * HOUR,
@@ -390,31 +361,31 @@ function buildSupportData(db, now) {
     const sev = wpick([['LOW', 5], ['MEDIUM', 3], ['HIGH', 1]]);
     db.incidents.push({
       id: `SMS-${4100 + i}`, type: pick(incidentTypes), severity: sev,
-      location: pick(['Apron I', 'Apron V', 'Taxiway H', 'Runway 05/23', 'T1 Check-in', 'Gate B7', 'Cargo apron']),
+      location: pick(['Main apron', 'Taxiway A', 'Runway 16/34', 'Terminal check-in', 'Gate 4', 'Walk-out stands']),
       status: wpick([['REPORTED', 2], ['INVESTIGATING', 3], ['MITIGATED', 2], ['CLOSED', 4]]),
       reportedBy: personName(), ts: now - randInt(1, 240) * HOUR,
       description: 'Auto-seeded report. See attachments and witness statements in case file.',
     });
   }
   db.inspections = [
-    { id: 'INSP-881', type: 'Runway 05/23 surface', due: now + 2 * HOUR, status: 'SCHEDULED', inspector: personName() },
-    { id: 'INSP-880', type: 'Runway 06L/24R surface', due: now - 1 * HOUR, status: 'COMPLETED', inspector: personName(), result: 'PASS' },
-    { id: 'INSP-879', type: 'Perimeter fence — north', due: now - 5 * HOUR, status: 'COMPLETED', inspector: personName(), result: 'PASS' },
+    { id: 'INSP-881', type: 'Runway 16/34 surface', due: now + 2 * HOUR, status: 'SCHEDULED', inspector: personName() },
+    { id: 'INSP-880', type: 'Runway 16/34 friction test', due: now - 1 * HOUR, status: 'COMPLETED', inspector: personName(), result: 'PASS' },
+    { id: 'INSP-879', type: 'Perimeter fence — east', due: now - 5 * HOUR, status: 'COMPLETED', inspector: personName(), result: 'PASS' },
     { id: 'INSP-878', type: 'Apron lighting lux survey', due: now + 9 * HOUR, status: 'SCHEDULED', inspector: personName() },
     { id: 'INSP-877', type: 'Wildlife patrol — infield', due: now + 30 * MIN, status: 'SCHEDULED', inspector: personName() },
-    { id: 'INSP-876', type: 'Friction test 15L/33R', due: now - 26 * HOUR, status: 'COMPLETED', inspector: personName(), result: 'PASS' },
+    { id: 'INSP-876', type: 'Taxiway A centreline lighting', due: now - 26 * HOUR, status: 'COMPLETED', inspector: personName(), result: 'PASS' },
   ];
   db.notams = [
-    { id: 'A1042/26', text: 'RWY 15R/33L CLSD due WIP. Pavement rehabilitation.', from: now - 30 * HOUR, to: now + 9 * HOUR, status: 'ACTIVE' },
-    { id: 'A1038/26', text: 'TWY J CL lights U/S between H and K. Caution advised.', from: now - 50 * HOUR, to: now + 70 * HOUR, status: 'ACTIVE' },
-    { id: 'A1031/26', text: 'Crane operating 1.2NM NE of ARP, 280ft AGL, lighted.', from: now - 5 * 24 * HOUR, to: now + 9 * 24 * HOUR, status: 'ACTIVE' },
-    { id: 'A1027/26', text: 'ILS RWY 05 GP maintenance daily 0200-0400Z.', from: now - 2 * 24 * HOUR, to: now + 3 * 24 * HOUR, status: 'ACTIVE' },
+    { id: 'A1042/26', text: 'TWY B CLSD due WIP between A and apron. Pavement rehabilitation.', from: now - 30 * HOUR, to: now + 9 * HOUR, status: 'ACTIVE' },
+    { id: 'A1038/26', text: 'TWY A CL lights U/S. Caution advised.', from: now - 50 * HOUR, to: now + 70 * HOUR, status: 'ACTIVE' },
+    { id: 'A1031/26', text: 'Crane operating 1.5NM N of ARP, 240ft AGL, lighted.', from: now - 5 * 24 * HOUR, to: now + 9 * 24 * HOUR, status: 'ACTIVE' },
+    { id: 'A1027/26', text: 'ILS RWY 16 GP maintenance daily 0200-0400Z.', from: now - 2 * 24 * HOUR, to: now + 3 * 24 * HOUR, status: 'ACTIVE' },
   ];
 
-  // --- Workforce ---
-  const roles = [['Ramp agent', 26], ['Gate agent', 18], ['Check-in agent', 16], ['Baggage handler', 18],
-    ['AOCC duty officer', 6], ['Airside ops officer', 8], ['Maintenance tech', 10], ['Security screening', 22],
-    ['De-ice crew', 6], ['Wildlife control', 3]];
+  // --- Workforce --- (regional airport rostering)
+  const roles = [['Ramp agent', 14], ['Gate agent', 10], ['Check-in agent', 10], ['Baggage handler', 10],
+    ['AOCC duty officer', 4], ['Airside ops officer', 5], ['Maintenance tech', 6], ['Security screening', 12],
+    ['De-ice crew', 4], ['Wildlife control', 2]];
   db.staff = [];
   let sn = 1;
   for (const [role, count] of roles) {
@@ -423,20 +394,17 @@ function buildSupportData(db, now) {
       db.staff.push({
         id: `EMP-${String(sn++).padStart(4, '0')}`, name: personName(), role, shift,
         status: wpick([['ON_DUTY', 6], ['BREAK', 1], ['OFF', 3]]),
-        zone: pick(['T1', 'T3', 'Airside', 'AOCC', 'Baggage hall']),
+        zone: pick(['Terminal', 'Airside', 'AOCC', 'Baggage hall']),
         certExpiry: now + randInt(10, 700) * 24 * HOUR,
       });
     }
   }
 
-  // --- Passenger flow checkpoints ---
+  // --- Passenger flow checkpoints --- (single-terminal YLW)
   db.queues = [
-    { id: 'T1-DOM',   name: 'T1 Security — Domestic',     lanes: 8, open: 5, wait: 9,  throughput: 410 },
-    { id: 'T1-INTL',  name: 'T1 Security — International', lanes: 10, open: 7, wait: 14, throughput: 520 },
-    { id: 'T1-TB',    name: 'T1 US Transborder (CBP)',     lanes: 12, open: 8, wait: 18, throughput: 470 },
-    { id: 'T3-DOM',   name: 'T3 Security — Domestic',      lanes: 6, open: 4, wait: 7,  throughput: 300 },
-    { id: 'T3-INTL',  name: 'T3 Security — International', lanes: 6, open: 4, wait: 11, throughput: 280 },
-    { id: 'CBSA',     name: 'Customs hall (CBSA)',         lanes: 20, open: 12, wait: 12, throughput: 900 },
+    { id: 'SEC-MAIN', name: 'Central Security Screening',     lanes: 5, open: 3, wait: 8,  throughput: 320 },
+    { id: 'SEC-USTB', name: 'Security — US / Transborder',    lanes: 2, open: 1, wait: 10, throughput: 150 },
+    { id: 'CBSA',     name: 'Customs hall (CBSA arrivals)',   lanes: 6, open: 3, wait: 9,  throughput: 280 },
   ].map(q => ({ ...q, history: Array.from({ length: 48 }, () => Math.max(2, q.wait + randInt(-5, 6))) }));
 
   // --- Baggage ---
@@ -450,20 +418,20 @@ function buildSupportData(db, now) {
     })),
   };
 
-  // --- Concessions ---
-  const units = [['Maple & Crane Coffee', 'F&B'], ['North Gate Bar', 'F&B'], ['Boreal Bistro', 'F&B'],
-    ['Duty Free Americas', 'Retail'], ['Relay News', 'Retail'], ['iStore Express', 'Retail'],
-    ['Aspire Lounge', 'Lounge'], ['Plaza Premium Lounge', 'Lounge'], ['ParkFast P1', 'Parking'], ['ValetPlus', 'Parking']];
+  // --- Concessions --- (Okanagan-themed regional terminal)
+  const units = [['Okanagan Coffee Co.', 'F&B'], ['Lakeside Tap & Grill', 'F&B'], ['Summit Café', 'F&B'],
+    ['WHT Mountain News', 'Retail'], ['Spirit of BC Gifts', 'Retail'], ['Tech Travel Express', 'Retail'],
+    ['Vineyard Lounge', 'Lounge'], ['YLW Pay Parking', 'Parking'], ['Valet Kelowna', 'Parking']];
   db.concessions = units.map(([name, cat], i) => ({
     id: `CON-${100 + i}`, name, category: cat,
-    location: pick(['T1 Pier A', 'T1 Pier B', 'T3 Pier C', 'T1 Transborder', 'Landside T1']),
-    todaySales: Math.round(rand(3000, 52000)),
+    location: pick(['Departures hall', 'Post-security', 'Gate area', 'Arrivals hall', 'Landside']),
+    todaySales: Math.round(rand(2000, 26000)),
     txns: randInt(80, 1400),
     perPax: 0, trend: rand(-8, 14).toFixed(1),
   }));
 
   // --- Weather ---
-  db.weather = makeWeather(now);
+  db.weather = makeWeather(now, db.config.airport.icao);
 
   db.alerts = [];
   db.events = [];
@@ -471,7 +439,7 @@ function buildSupportData(db, now) {
   db.invoices = [];
 }
 
-function makeWeather(now) {
+function makeWeather(now, icao = 'CYLW') {
   const conditions = wpick([
     [{ cond: 'CAVOK', vis: 9999, cloud: 'SKC' }, 5],
     [{ cond: 'Few clouds', vis: 9999, cloud: 'FEW035' }, 4],
@@ -490,7 +458,7 @@ function makeWeather(now) {
     windDir, windSpd, gust: windSpd > 15 ? windSpd + randInt(5, 12) : null,
     vis: conditions.vis, cloud: conditions.cloud, cond: conditions.cond,
     qnh: (1000 + randInt(-18, 25)),
-    metar: `CYYZ ${ddhhmm} ${String(windDir).padStart(3, '0')}${String(windSpd).padStart(2, '0')}${windSpd > 15 ? 'G' + (windSpd + 8) : ''}KT ${conditions.vis === 9999 ? '9999' : conditions.vis} ${conditions.cloud} ${temp < 0 ? 'M' + Math.abs(temp) : temp}/${temp - 4 < 0 ? 'M' + Math.abs(temp - 4) : temp - 4} Q${1000 + randInt(-18, 25)} NOSIG`,
+    metar: `${icao} ${ddhhmm} ${String(windDir).padStart(3, '0')}${String(windSpd).padStart(2, '0')}${windSpd > 15 ? 'G' + (windSpd + 8) : ''}KT ${conditions.vis === 9999 ? '9999' : conditions.vis} ${conditions.cloud} ${temp < 0 ? 'M' + Math.abs(temp) : temp}/${temp - 4 < 0 ? 'M' + Math.abs(temp - 4) : temp - 4} Q${1000 + randInt(-18, 25)} NOSIG`,
     deiceActive: temp <= 1,
     history: Array.from({ length: 24 }, (_, i) => ({ h: i, temp: temp + randInt(-4, 3), wind: Math.max(2, windSpd + randInt(-6, 7)) })),
   };
@@ -501,16 +469,16 @@ function seed() {
   const db = {
     seededAt: now,
     config: {
-      airport: { iata: 'YYZ', icao: 'CYYZ', name: 'Toronto Pearson International', city: 'Toronto', tz: 'America/Toronto' },
+      airport: { iata: 'YLW', icao: 'CYLW', name: 'Kelowna International', city: 'Kelowna', tz: 'America/Vancouver' },
       operator: 'TechHouseCa Inc.',
       platform: 'Vectro',
       currency: 'CAD',
       tariffs: TARIFFS,
       users: [
         { id: 'u1', name: 'Jhonty (you)', email: 'jhonty1993@gmail.com', role: 'Platform Owner' },
-        { id: 'u2', name: 'AOCC Duty Manager', email: 'aocc@vectro.ca', role: 'Operations' },
-        { id: 'u3', name: 'Airside Supervisor', email: 'airside@vectro.ca', role: 'Airside' },
-        { id: 'u4', name: 'Finance Analyst', email: 'billing@vectro.ca', role: 'Finance' },
+        { id: 'u2', name: 'AOCC Duty Manager', email: 'aocc@ylw.vectro.ca', role: 'Operations' },
+        { id: 'u3', name: 'Airside Supervisor', email: 'airside@ylw.vectro.ca', role: 'Airside' },
+        { id: 'u4', name: 'Finance Analyst', email: 'billing@ylw.vectro.ca', role: 'Finance' },
       ],
     },
     airlines: AIRLINES,
